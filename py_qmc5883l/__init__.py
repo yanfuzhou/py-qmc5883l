@@ -22,7 +22,7 @@ __author__ = "Yanfu Zhou"
 __copyright__ = "Copyright 2022 Yanfu Zhou <yanfu.zhou@outlook.com>"
 __license__ = "GPLv3-or-later"
 __email__ = "yanfu.zhou@outlook.com"
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 DFLT_BUS = 1
 DFLT_ADDRESS = 0x0d
@@ -111,7 +111,7 @@ class QMC5883L(object):
 
     def _write_byte(self, registry, value):
         self.bus.write_byte_data(self.address, registry, value)
-        time.sleep(1)
+        time.sleep(0.01)
 
     def _read_byte(self, registry):
         return self.bus.read_byte_data(self.address, registry)
@@ -158,7 +158,7 @@ class QMC5883L(object):
                 break
             else:
                 # Waiting for DRDY.
-                time.sleep(1)
+                time.sleep(0.01)
                 i += 1
         return [x, y, z, t]
 
