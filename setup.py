@@ -12,7 +12,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/RigacciOrg/py-qmc5883l",
-    packages=['smbus2'],
+    packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python",
         "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
