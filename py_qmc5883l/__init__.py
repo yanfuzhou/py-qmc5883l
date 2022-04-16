@@ -16,7 +16,7 @@ of the magnetic sensor on axis X, Y and Z, e.g. [-1257, 940, -4970].
 import logging
 import math
 import time
-from smbus2 import SMBus
+import smbus
 
 __author__ = "Yanfu Zhou"
 __copyright__ = "Copyright 2022 Yanfu Zhou <yanfu.zhou@outlook.com>"
@@ -76,7 +76,7 @@ class QMC5883L(object):
                  oversampling_rate=OSR_512):
 
         self.address = address
-        self.bus = SMBus(i2c_bus)
+        self.bus = smbus.SMBus(i2c_bus)
         self.output_range = output_range
         self._declination = 0.0
         self._calibration = [[1.0, 0.0, 0.0],
@@ -91,9 +91,9 @@ class QMC5883L(object):
         self.mode_stby = (MODE_STBY | ODR_10HZ | RNG_2G | OSR_64)
         self.mode_continuous()
 
-    def __del__(self):
-        """Once finished using the sensor, switch to standby mode."""
-        self.mode_standby()
+    # def __del__(self):
+    #     """Once finished using the sensor, switch to standby mode."""
+    #     self.mode_standby()
 
     def mode_continuous(self):
         """Set the device in continuous read mode."""
@@ -102,12 +102,12 @@ class QMC5883L(object):
         self._write_byte(REG_RST_PERIOD, 0x01)  # Define SET/RESET period.
         self._write_byte(REG_CONTROL_1, self.mode_cont)  # Set operation mode.
 
-    def mode_standby(self):
-        """Set the device in standby mode."""
-        self._write_byte(REG_CONTROL_2, SOFT_RST)
-        self._write_byte(REG_CONTROL_2, INT_ENB)
-        self._write_byte(REG_RST_PERIOD, 0x01)
-        self._write_byte(REG_CONTROL_1, self.mode_stby)  # Set operation mode.
+    # def mode_standby(self):
+    #     """Set the device in standby mode."""
+    #     self._write_byte(REG_CONTROL_2, SOFT_RST)
+    #     self._write_byte(REG_CONTROL_2, INT_ENB)
+    #     self._write_byte(REG_RST_PERIOD, 0x01)
+    #     self._write_byte(REG_CONTROL_1, self.mode_stby)  # Set operation mode.
 
     def _write_byte(self, registry, value):
         self.bus.write_byte_data(self.address, registry, value)
