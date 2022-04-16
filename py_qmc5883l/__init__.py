@@ -22,7 +22,7 @@ __author__ = "Yanfu Zhou"
 __copyright__ = "Copyright 2022 Yanfu Zhou <yanfu.zhou@outlook.com>"
 __license__ = "GPLv3-or-later"
 __email__ = "yanfu.zhou@outlook.com"
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 DFLT_BUS = 1
 DFLT_ADDRESS = 0x0d
@@ -91,9 +91,9 @@ class QMC5883L(object):
         self.mode_stby = (MODE_STBY | ODR_10HZ | RNG_2G | OSR_64)
         self.mode_continuous()
 
-    # def __del__(self):
-    #     """Once finished using the sensor, switch to standby mode."""
-    #     self.mode_standby()
+    def __del__(self):
+        """Once finished using the sensor, switch to standby mode."""
+        self.mode_standby()
 
     def mode_continuous(self):
         """Set the device in continuous read mode."""
@@ -102,16 +102,16 @@ class QMC5883L(object):
         self._write_byte(REG_RST_PERIOD, 0x01)  # Define SET/RESET period.
         self._write_byte(REG_CONTROL_1, self.mode_cont)  # Set operation mode.
 
-    # def mode_standby(self):
-    #     """Set the device in standby mode."""
-    #     self._write_byte(REG_CONTROL_2, SOFT_RST)
-    #     self._write_byte(REG_CONTROL_2, INT_ENB)
-    #     self._write_byte(REG_RST_PERIOD, 0x01)
-    #     self._write_byte(REG_CONTROL_1, self.mode_stby)  # Set operation mode.
+    def mode_standby(self):
+        """Set the device in standby mode."""
+        self._write_byte(REG_CONTROL_2, SOFT_RST)
+        self._write_byte(REG_CONTROL_2, INT_ENB)
+        self._write_byte(REG_RST_PERIOD, 0x01)
+        self._write_byte(REG_CONTROL_1, self.mode_stby)  # Set operation mode.
 
     def _write_byte(self, registry, value):
         self.bus.write_byte_data(self.address, registry, value)
-        time.sleep(0.01)
+        time.sleep(1)
 
     def _read_byte(self, registry):
         return self.bus.read_byte_data(self.address, registry)
@@ -158,7 +158,7 @@ class QMC5883L(object):
                 break
             else:
                 # Waiting for DRDY.
-                time.sleep(0.01)
+                time.sleep(1)
                 i += 1
         return [x, y, z, t]
 
