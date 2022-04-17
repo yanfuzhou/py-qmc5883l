@@ -22,7 +22,7 @@ __author__ = "Yanfu Zhou"
 __copyright__ = "Copyright 2022 Yanfu Zhou <yanfu.zhou@outlook.com>"
 __license__ = "GPLv3-or-later"
 __email__ = "yanfu.zhou@outlook.com"
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 DFLT_BUS = 1
 DFLT_ADDRESS = 0x0d
@@ -103,10 +103,10 @@ class QMC5883L(object):
         # self._write_byte(REG_RST_PERIOD, 0x01)  # Define SET/RESET period.
         # self._write_byte(REG_CONTROL_1, self.mode_cont)  # Set operation mode.
         self.bus.write_i2c_block_data(self.address, REG_CONTROL_2, [
-            INT_ENB, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, POL_PNT, SOFT_RST
+            SOFT_RST, POL_PNT, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, INT_ENB
         ])
         self.bus.write_i2c_block_data(self.address, REG_RST_PERIOD, [0x01])
-        self.bus.write_i2c_block_data(self.address, REG_CONTROL_1, [MODE_CONT, ODR_10HZ, RNG_2G, OSR_512])
+        self.bus.write_i2c_block_data(self.address, REG_CONTROL_1, [OSR_512, RNG_2G, ODR_10HZ, MODE_CONT])
 
     def mode_standby(self):
         """Set the device in standby mode."""
@@ -115,10 +115,10 @@ class QMC5883L(object):
         # self._write_byte(REG_RST_PERIOD, 0x01)
         # self._write_byte(REG_CONTROL_1, self.mode_stby)  # Set operation mode.
         self.bus.write_i2c_block_data(self.address, REG_CONTROL_2, [
-            INT_ENB, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, POL_PNT, SOFT_RST
+            SOFT_RST, POL_PNT, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, INT_ENB
         ])
         self.bus.write_i2c_block_data(self.address, REG_RST_PERIOD, [0x01])
-        self.bus.write_i2c_block_data(self.address, REG_CONTROL_1, [MODE_STBY, ODR_10HZ, RNG_2G, OSR_64])
+        self.bus.write_i2c_block_data(self.address, REG_CONTROL_1, [OSR_64, RNG_2G, ODR_10HZ, MODE_STBY])
 
     def _write_byte(self, registry, value):
         self.bus.write_byte_data(self.address, registry, value)
