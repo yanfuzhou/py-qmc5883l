@@ -22,7 +22,7 @@ __author__ = "Yanfu Zhou"
 __copyright__ = "Copyright 2022 Yanfu Zhou <yanfu.zhou@outlook.com>"
 __license__ = "GPLv3-or-later"
 __email__ = "yanfu.zhou@outlook.com"
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 DFLT_BUS = 1
 DFLT_ADDRESS = 0x0d
@@ -70,15 +70,15 @@ class QMC5883L(object):
     """Interface for the QMC5883l 3-Axis Magnetic Sensor."""
     def __init__(self,
                  i2c_bus=DFLT_BUS,
-                 address=DFLT_ADDRESS
-                 # output_data_rate=ODR_10HZ,
-                 # output_range=RNG_2G,
-                 # oversampling_rate=OSR_512
+                 address=DFLT_ADDRESS,
+                 output_data_rate=ODR_10HZ,
+                 output_range=RNG_2G,
+                 oversampling_rate=OSR_512
                  ):
 
         self.address = address
         self.bus = SMBus(i2c_bus)
-        # self.output_range = output_range
+        self.output_range = output_range
         self._declination = 0.0
         self._calibration = [[1.0, 0.0, 0.0],
                              [0.0, 1.0, 0.0],
@@ -87,9 +87,9 @@ class QMC5883L(object):
         if self.bus.read_byte_data(address, REG_CHIP_ID) != 0xff:
             msg = "Chip ID returned 0x%x instead of 0xff; is the wrong chip?"
             logging.warning(msg, chip_id)
-        # self.mode_cont = (MODE_CONT | output_data_rate | output_range
-        #                   | oversampling_rate)
-        # self.mode_stby = (MODE_STBY | ODR_10HZ | RNG_2G | OSR_64)
+        self.mode_cont = (MODE_CONT | output_data_rate | output_range
+                          | oversampling_rate)
+        self.mode_stby = (MODE_STBY | ODR_10HZ | RNG_2G | OSR_64)
         self.mode_continuous()
 
     def __del__(self):
@@ -98,27 +98,27 @@ class QMC5883L(object):
 
     def mode_continuous(self):
         """Set the device in continuous read mode."""
-        # self._write_byte(REG_CONTROL_2, SOFT_RST)  # Soft reset.
-        # self._write_byte(REG_CONTROL_2, INT_ENB)  # Disable interrupt.
-        # self._write_byte(REG_RST_PERIOD, 0x01)  # Define SET/RESET period.
-        # self._write_byte(REG_CONTROL_1, self.mode_cont)  # Set operation mode.
-        self.bus.write_i2c_block_data(self.address, REG_CONTROL_2, [
-            SOFT_RST, POL_PNT, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, INT_ENB
-        ])
-        self.bus.write_i2c_block_data(self.address, REG_RST_PERIOD, [0x01])
-        self.bus.write_i2c_block_data(self.address, REG_CONTROL_1, [OSR_512, RNG_2G, ODR_10HZ, MODE_CONT])
+        self._write_byte(REG_CONTROL_2, SOFT_RST)  # Soft reset.
+        self._write_byte(REG_CONTROL_2, INT_ENB)  # Disable interrupt.
+        self._write_byte(REG_RST_PERIOD, 0x01)  # Define SET/RESET period.
+        self._write_byte(REG_CONTROL_1, self.mode_cont)  # Set operation mode.
+        # self.bus.write_i2c_block_data(self.address, REG_CONTROL_2, [
+        #     SOFT_RST, POL_PNT, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, INT_ENB
+        # ])
+        # self.bus.write_i2c_block_data(self.address, REG_RST_PERIOD, [0x01])
+        # self.bus.write_i2c_block_data(self.address, REG_CONTROL_1, [OSR_512, RNG_2G, ODR_10HZ, MODE_CONT])
 
     def mode_standby(self):
         """Set the device in standby mode."""
-        # self._write_byte(REG_CONTROL_2, SOFT_RST)
-        # self._write_byte(REG_CONTROL_2, INT_ENB)
-        # self._write_byte(REG_RST_PERIOD, 0x01)
-        # self._write_byte(REG_CONTROL_1, self.mode_stby)  # Set operation mode.
-        self.bus.write_i2c_block_data(self.address, REG_CONTROL_2, [
-            SOFT_RST, POL_PNT, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, INT_ENB
-        ])
-        self.bus.write_i2c_block_data(self.address, REG_RST_PERIOD, [0x01])
-        self.bus.write_i2c_block_data(self.address, REG_CONTROL_1, [OSR_64, RNG_2G, ODR_10HZ, MODE_STBY])
+        self._write_byte(REG_CONTROL_2, SOFT_RST)
+        self._write_byte(REG_CONTROL_2, INT_ENB)
+        self._write_byte(REG_RST_PERIOD, 0x01)
+        self._write_byte(REG_CONTROL_1, self.mode_stby)  # Set operation mode.
+        # self.bus.write_i2c_block_data(self.address, REG_CONTROL_2, [
+        #     SOFT_RST, POL_PNT, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, INT_ENB
+        # ])
+        # self.bus.write_i2c_block_data(self.address, REG_RST_PERIOD, [0x01])
+        # self.bus.write_i2c_block_data(self.address, REG_CONTROL_1, [OSR_64, RNG_2G, ODR_10HZ, MODE_STBY])
 
     def _write_byte(self, registry, value):
         self.bus.write_byte_data(self.address, registry, value)
