@@ -12,16 +12,15 @@ Usage example:
 you will get three 16 bit signed integers, representing the values
 of the magnetic sensor on axis X, Y and Z, e.g. [-1257, 940, -4970].
 """
-
-import logging
 import math
+import logging
 from smbus2 import SMBus
 
 __author__ = "Yanfu Zhou"
 __copyright__ = "Copyright 2022 Yanfu Zhou <yanfu.zhou@outlook.com>"
 __license__ = "GPLv3-or-later"
 __email__ = "yanfu.zhou@outlook.com"
-__version__ = "0.1.4"
+__version__ = "0.2.5"
 
 DFLT_BUS = 1
 DFLT_ADDRESS = 0x0d
