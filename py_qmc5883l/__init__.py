@@ -15,14 +15,13 @@ of the magnetic sensor on axis X, Y and Z, e.g. [-1257, 940, -4970].
 
 import logging
 import math
-import time
 from smbus2 import SMBus
 
 __author__ = "Yanfu Zhou"
 __copyright__ = "Copyright 2022 Yanfu Zhou <yanfu.zhou@outlook.com>"
 __license__ = "GPLv3-or-later"
 __email__ = "yanfu.zhou@outlook.com"
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 
 DFLT_BUS = 1
 DFLT_ADDRESS = 0x0d
@@ -84,7 +83,7 @@ class QMC5883L(object):
                              [0.0, 1.0, 0.0],
                              [0.0, 0.0, 1.0]]
         chip_id = self.bus.read_byte_data(address, REG_CHIP_ID)
-        if self.bus.read_byte_data(address, REG_CHIP_ID) != 0xff:
+        if chip_id != 0xff:
             msg = "Chip ID returned 0x%x instead of 0xff; is the wrong chip?"
             logging.warning(msg, chip_id)
         self.mode_cont = (MODE_CONT | output_data_rate | output_range
@@ -98,93 +97,38 @@ class QMC5883L(object):
 
     def mode_continuous(self):
         """Set the device in continuous read mode."""
-        self._write_byte(REG_CONTROL_2, SOFT_RST)  # Soft reset.
-        self._write_byte(REG_CONTROL_2, INT_ENB)  # Disable interrupt.
-        self._write_byte(REG_RST_PERIOD, 0x01)  # Define SET/RESET period.
-        self._write_byte(REG_CONTROL_1, self.mode_cont)  # Set operation mode.
-        # self.bus.write_i2c_block_data(self.address, REG_CONTROL_2, [
-        #     SOFT_RST, POL_PNT, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, INT_ENB
-        # ])
-        # self.bus.write_i2c_block_data(self.address, REG_RST_PERIOD, [0x01])
-        # self.bus.write_i2c_block_data(self.address, REG_CONTROL_1, [OSR_512, RNG_2G, ODR_10HZ, MODE_CONT])
+        self.bus.write_i2c_block_data(self.address, REG_CONTROL_1, [
+            (MODE_CONT | ODR_10HZ | RNG_2G | OSR_512), SOFT_RST, 0x01])
+        self.bus.write_i2c_block_data(self.address, REG_CONTROL_1, [
+            (MODE_CONT | ODR_10HZ | RNG_2G | OSR_512), INT_ENB, 0x01])
 
     def mode_standby(self):
         """Set the device in standby mode."""
-        self._write_byte(REG_CONTROL_2, SOFT_RST)
-        self._write_byte(REG_CONTROL_2, INT_ENB)
-        self._write_byte(REG_RST_PERIOD, 0x01)
-        self._write_byte(REG_CONTROL_1, self.mode_stby)  # Set operation mode.
-        # self.bus.write_i2c_block_data(self.address, REG_CONTROL_2, [
-        #     SOFT_RST, POL_PNT, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, INT_ENB
-        # ])
-        # self.bus.write_i2c_block_data(self.address, REG_RST_PERIOD, [0x01])
-        # self.bus.write_i2c_block_data(self.address, REG_CONTROL_1, [OSR_64, RNG_2G, ODR_10HZ, MODE_STBY])
+        self.bus.write_i2c_block_data(self.address, REG_CONTROL_1, [
+            (MODE_STBY | ODR_10HZ | RNG_2G | OSR_64), SOFT_RST, 0x01])
+        self.bus.write_i2c_block_data(self.address, REG_CONTROL_1, [
+            (MODE_STBY | ODR_10HZ | RNG_2G | OSR_64), INT_ENB, 0x01])
 
-    def _write_byte(self, registry, value):
-        self.bus.write_byte_data(self.address, registry, value)
-        time.sleep(0.01)
+    @staticmethod
+    def _extract_from_bytes(data, offset):
+        if offset == REG_TOUT_LSB:
+            val = ((data[1] << 8) + data[0])
+        else:
 
-    def _read_byte(self, registry):
-        return self.bus.read_byte_data(self.address, registry)
-
-    def _read_word(self, registry):
-        """Read a two bytes value stored as LSB and MSB."""
-        low = self.bus.read_byte_data(self.address, registry)
-        high = self.bus.read_byte_data(self.address, registry + 1)
-        val = (high << 8) + low
-        return val
-
-    def _read_word_2c(self, registry):
-        """Calculate the 2's complement of a two bytes value."""
-        val = self._read_word(registry)
-        if val >= 0x8000:  # 32768
-            return val - 0x10000  # 65536
+            val = ((data[offset + 1] << 8) + data[offset])
+        if val >= 2 ** 15:
+            return val - 2 ** 16
         else:
             return val
 
-    # def _read_data_from_i2c_block(self, offset=REG_XOUT_LSB, bl=6):
-    #     data = self.bus.read_i2c_block_data(self.address, offset, bl)
-    #     if offset == REG_TOUT_LSB:
-    #         val = ((data[1] << 8) + data[0])
-    #     else:
-    #         val = ((data[offset + 1] << 8) + data[offset])
-    #     if val >= 2 ** 15:
-    #         val = val - 2 ** 16
-    #     return val
-
     def get_data(self):
         """Read data from magnetic and temperature data registers."""
-        i = 0
-        [x, y, z, t] = [None, None, None, None]
-        while i < 20:  # Timeout after about 0.20 seconds.
-            status = self._read_byte(REG_STATUS_1)
-            if status & STAT_OVL:
-                # Some values have reached an overflow.
-                msg = "Magnetic sensor overflow."
-                if self.output_range == RNG_2G:
-                    msg += " Consider switching to RNG_8G output range."
-                logging.warning(msg)
-            if status & STAT_DOR:
-                # Previous measure was read partially, sensor in Data Lock.
-                x = self._read_word_2c(REG_XOUT_LSB)
-                y = self._read_word_2c(REG_YOUT_LSB)
-                z = self._read_word_2c(REG_ZOUT_LSB)
-                continue
-            if status & STAT_DRDY:
-                # Data is ready to read.
-                x = self._read_word_2c(REG_XOUT_LSB)
-                y = self._read_word_2c(REG_YOUT_LSB)
-                z = self._read_word_2c(REG_ZOUT_LSB)
-                t = self._read_word_2c(REG_TOUT_LSB)
-                break
-            else:
-                # Waiting for DRDY.
-                time.sleep(0.01)
-                i += 1
-        # x = self._read_data_from_i2c_block(offset=REG_XOUT_LSB)
-        # y = self._read_data_from_i2c_block(offset=REG_YOUT_LSB)
-        # z = self._read_data_from_i2c_block(offset=REG_ZOUT_LSB)
-        # t = self._read_data_from_i2c_block(offset=REG_TOUT_LSB, bl=2)
+        data = self.bus.read_i2c_block_data(self.address, REG_XOUT_LSB, 6)
+        x = self._extract_from_bytes(data=data, offset=REG_XOUT_LSB)
+        y = self._extract_from_bytes(data=data, offset=REG_YOUT_LSB)
+        z = self._extract_from_bytes(data=data, offset=REG_ZOUT_LSB)
+        t = self._extract_from_bytes(data=self.bus.read_i2c_block_data(self.address, REG_TOUT_LSB, 2),
+                                     offset=REG_TOUT_LSB)
         return [x, y, z, t]
 
     def get_magnet_raw(self):
