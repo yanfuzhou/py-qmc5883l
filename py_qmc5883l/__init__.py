@@ -22,7 +22,7 @@ __author__ = "Yanfu Zhou"
 __copyright__ = "Copyright 2022 Yanfu Zhou <yanfu.zhou@outlook.com>"
 __license__ = "GPLv3-or-later"
 __email__ = "yanfu.zhou@outlook.com"
-__version__ = "0.0.7"
+__version__ = "0.0.8"
 
 DFLT_BUS = 1
 DFLT_ADDRESS = 0x0d
@@ -131,8 +131,8 @@ class QMC5883L(object):
     #     else:
     #         return val
 
-    def _read_data_from_i2c_block(self, offset=REG_XOUT_LSB, block_length=6):
-        data = self.bus.read_i2c_block_data(self.address, offset, block_length)
+    def _read_data_from_i2c_block(self, offset=REG_XOUT_LSB, bl=6):
+        data = self.bus.read_i2c_block_data(self.address, offset, bl)
         val = ((data[offset + 1] << 8) + data[offset])
         if val >= 2 ** 15:
             val = val - 2 ** 16
@@ -170,7 +170,7 @@ class QMC5883L(object):
         x = self._read_data_from_i2c_block(offset=REG_XOUT_LSB)
         y = self._read_data_from_i2c_block(offset=REG_YOUT_LSB)
         z = self._read_data_from_i2c_block(offset=REG_ZOUT_LSB)
-        t = self._read_data_from_i2c_block(offset=REG_TOUT_LSB)
+        t = self._read_data_from_i2c_block(offset=REG_TOUT_LSB, bl=2)
         return [x, y, z, t]
 
     def get_magnet_raw(self):
