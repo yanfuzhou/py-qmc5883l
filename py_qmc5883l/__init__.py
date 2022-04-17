@@ -16,13 +16,13 @@ of the magnetic sensor on axis X, Y and Z, e.g. [-1257, 940, -4970].
 import logging
 import math
 import time
-import smbus
+from smbus2 import SMBus
 
 __author__ = "Yanfu Zhou"
 __copyright__ = "Copyright 2022 Yanfu Zhou <yanfu.zhou@outlook.com>"
 __license__ = "GPLv3-or-later"
 __email__ = "yanfu.zhou@outlook.com"
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 
 DFLT_BUS = 1
 DFLT_ADDRESS = 0x0d
@@ -76,7 +76,7 @@ class QMC5883L(object):
                  oversampling_rate=OSR_512):
 
         self.address = address
-        self.bus = smbus.SMBus(i2c_bus)
+        self.bus = SMBus(i2c_bus)
         self.output_range = output_range
         self._declination = 0.0
         self._calibration = [[1.0, 0.0, 0.0],
@@ -86,80 +86,91 @@ class QMC5883L(object):
         if chip_id != 0xff:
             msg = "Chip ID returned 0x%x instead of 0xff; is the wrong chip?"
             logging.warning(msg, chip_id)
-        # self.mode_cont = (MODE_CONT | output_data_rate | output_range
-        #                   | oversampling_rate)
-        # self.mode_stby = (MODE_STBY | ODR_10HZ | RNG_2G | OSR_64)
-        # self.mode_continuous()
+        self.mode_cont = (MODE_CONT | output_data_rate | output_range
+                          | oversampling_rate)
+        self.mode_stby = (MODE_STBY | ODR_10HZ | RNG_2G | OSR_64)
+        self.mode_continuous()
 
-    # def __del__(self):
-    #     """Once finished using the sensor, switch to standby mode."""
-    #     self.mode_standby()
+    def __del__(self):
+        """Once finished using the sensor, switch to standby mode."""
+        self.mode_standby()
 
-    # def mode_continuous(self):
-    #     """Set the device in continuous read mode."""
-    #     self._write_byte(REG_CONTROL_2, SOFT_RST)  # Soft reset.
-    #     self._write_byte(REG_CONTROL_2, INT_ENB)  # Disable interrupt.
-    #     self._write_byte(REG_RST_PERIOD, 0x01)  # Define SET/RESET period.
-    #     self._write_byte(REG_CONTROL_1, self.mode_cont)  # Set operation mode.
+    def mode_continuous(self):
+        """Set the device in continuous read mode."""
+        self._write_byte(REG_CONTROL_2, SOFT_RST)  # Soft reset.
+        self._write_byte(REG_CONTROL_2, INT_ENB)  # Disable interrupt.
+        self._write_byte(REG_RST_PERIOD, 0x01)  # Define SET/RESET period.
+        self._write_byte(REG_CONTROL_1, self.mode_cont)  # Set operation mode.
 
-    # def mode_standby(self):
-    #     """Set the device in standby mode."""
-    #     self._write_byte(REG_CONTROL_2, SOFT_RST)
-    #     self._write_byte(REG_CONTROL_2, INT_ENB)
-    #     self._write_byte(REG_RST_PERIOD, 0x01)
-    #     self._write_byte(REG_CONTROL_1, self.mode_stby)  # Set operation mode.
+    def mode_standby(self):
+        """Set the device in standby mode."""
+        self._write_byte(REG_CONTROL_2, SOFT_RST)
+        self._write_byte(REG_CONTROL_2, INT_ENB)
+        self._write_byte(REG_RST_PERIOD, 0x01)
+        self._write_byte(REG_CONTROL_1, self.mode_stby)  # Set operation mode.
 
-    # def _write_byte(self, registry, value):
-    #     self.bus.write_byte_data(self.address, registry, value)
-    #     time.sleep(0.01)
+    def _write_byte(self, registry, value):
+        self.bus.write_byte_data(self.address, registry, value)
+        time.sleep(0.01)
 
     def _read_byte(self, registry):
         return self.bus.read_byte_data(self.address, registry)
 
-    def _read_word(self, registry):
-        """Read a two bytes value stored as LSB and MSB."""
-        low = self.bus.read_byte_data(self.address, registry)
-        high = self.bus.read_byte_data(self.address, registry + 1)
-        val = (high << 8) + low
-        return val
+    # def _read_word(self, registry):
+    #     """Read a two bytes value stored as LSB and MSB."""
+    #     low = self.bus.read_byte_data(self.address, registry)
+    #     high = self.bus.read_byte_data(self.address, registry + 1)
+    #     val = (high << 8) + low
+    #     return val
 
-    def _read_word_2c(self, registry):
-        """Calculate the 2's complement of a two bytes value."""
-        val = self._read_word(registry)
-        if val >= 0x8000:  # 32768
-            return val - 0x10000  # 65536
-        else:
-            return val
+    # def _read_word_2c(self, registry):
+    #     """Calculate the 2's complement of a two bytes value."""
+    #     val = self._read_word(registry)
+    #     if val >= 0x8000:  # 32768
+    #         return val - 0x10000  # 65536
+    #     else:
+    #         return val
+
+    def _read_data_from_i2c_block(self, offset=REG_XOUT_LSB, block_length=6):
+        data = self.bus.read_i2c_block_data(self.address, offset, block_length)
+        val = ((data[offset + 1] << 8) + data[offset])
+        if val >= 2 ** 15:
+            val = val - 2 ** 16
+        return val
 
     def get_data(self):
         """Read data from magnetic and temperature data registers."""
-        i = 0
-        [x, y, z, t] = [None, None, None, None]
-        while i < 20:  # Timeout after about 0.20 seconds.
-            status = self._read_byte(REG_STATUS_1)
-            if status & STAT_OVL:
-                # Some values have reached an overflow.
-                msg = ("Magnetic sensor overflow.")
-                if self.output_range == RNG_2G:
-                    msg += " Consider switching to RNG_8G output range."
-                logging.warning(msg)
-            if status & STAT_DOR:
-                # Previous measure was read partially, sensor in Data Lock.
-                x = self._read_word_2c(REG_XOUT_LSB)
-                y = self._read_word_2c(REG_YOUT_LSB)
-                z = self._read_word_2c(REG_ZOUT_LSB)
-                continue
-            if status & STAT_DRDY:
-                # Data is ready to read.
-                x = self._read_word_2c(REG_XOUT_LSB)
-                y = self._read_word_2c(REG_YOUT_LSB)
-                z = self._read_word_2c(REG_ZOUT_LSB)
-                t = self._read_word_2c(REG_TOUT_LSB)
-                break
-            else:
-                # Waiting for DRDY.
-                time.sleep(0.01)
-                i += 1
+        # i = 0
+        # [x, y, z, t] = [None, None, None, None]
+        # while i < 20:  # Timeout after about 0.20 seconds.
+        #     status = self._read_byte(REG_STATUS_1)
+        #     if status & STAT_OVL:
+        #         # Some values have reached an overflow.
+        #         msg = "Magnetic sensor overflow."
+        #         if self.output_range == RNG_2G:
+        #             msg += " Consider switching to RNG_8G output range."
+        #         logging.warning(msg)
+        #     if status & STAT_DOR:
+        #         # Previous measure was read partially, sensor in Data Lock.
+        #         x = self._read_word_2c(REG_XOUT_LSB)
+        #         y = self._read_word_2c(REG_YOUT_LSB)
+        #         z = self._read_word_2c(REG_ZOUT_LSB)
+        #         continue
+        #     if status & STAT_DRDY:
+        #         # Data is ready to read.
+        #         x = self._read_word_2c(REG_XOUT_LSB)
+        #         y = self._read_word_2c(REG_YOUT_LSB)
+        #         z = self._read_word_2c(REG_ZOUT_LSB)
+        #         t = self._read_word_2c(REG_TOUT_LSB)
+        #         break
+        #     else:
+        #         # Waiting for DRDY.
+        #         time.sleep(0.01)
+        #         i += 1
+        x = self._read_data_from_i2c_block(offset=REG_XOUT_LSB)
+        y = self._read_data_from_i2c_block(offset=REG_YOUT_LSB)
+        z = self._read_data_from_i2c_block(offset=REG_ZOUT_LSB)
+        t = self._read_data_from_i2c_block(offset=REG_TOUT_LSB)
         return [x, y, z, t]
 
     def get_magnet_raw(self):
@@ -212,13 +223,13 @@ class QMC5883L(object):
 
     def set_declination(self, value):
         """Set the magnetic declination, in degrees."""
-        try:
+        if type(value) is int or type(value) is float:
             d = float(value)
             if d < -180.0 or d > 180.0:
                 logging.error(u'Declination must be >= -180 and <= 180.')
             else:
                 self._declination = d
-        except:
+        else:
             logging.error(u'Declination must be a float value.')
 
     def get_declination(self):
@@ -228,12 +239,12 @@ class QMC5883L(object):
     def set_calibration(self, value):
         """Set the 3x3 matrix for horizontal (x, y) magnetic vector calibration."""
         c = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
-        try:
+        if len(c) == len(c[0]) == len(c[1]) == len(c[2]) == 3:
             for i in range(0, 3):
                 for j in range(0, 3):
                     c[i][j] = float(value[i][j])
             self._calibration = c
-        except:
+        else:
             logging.error(u'Calibration must be a 3x3 float matrix.')
 
     def get_calibration(self):
