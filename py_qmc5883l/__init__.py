@@ -22,7 +22,7 @@ __author__ = "Yanfu Zhou"
 __copyright__ = "Copyright 2022 Yanfu Zhou <yanfu.zhou@outlook.com>"
 __license__ = "GPLv3-or-later"
 __email__ = "yanfu.zhou@outlook.com"
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 DFLT_BUS = 1
 DFLT_ADDRESS = 0x0d
@@ -124,67 +124,67 @@ class QMC5883L(object):
         self.bus.write_byte_data(self.address, registry, value)
         time.sleep(0.01)
 
-    # def _read_byte(self, registry):
-    #     return self.bus.read_byte_data(self.address, registry)
+    def _read_byte(self, registry):
+        return self.bus.read_byte_data(self.address, registry)
 
-    # def _read_word(self, registry):
-    #     """Read a two bytes value stored as LSB and MSB."""
-    #     low = self.bus.read_byte_data(self.address, registry)
-    #     high = self.bus.read_byte_data(self.address, registry + 1)
-    #     val = (high << 8) + low
-    #     return val
-
-    # def _read_word_2c(self, registry):
-    #     """Calculate the 2's complement of a two bytes value."""
-    #     val = self._read_word(registry)
-    #     if val >= 0x8000:  # 32768
-    #         return val - 0x10000  # 65536
-    #     else:
-    #         return val
-
-    def _read_data_from_i2c_block(self, offset=REG_XOUT_LSB, bl=6):
-        data = self.bus.read_i2c_block_data(self.address, offset, bl)
-        if offset == REG_TOUT_LSB:
-            val = ((data[1] << 8) + data[0])
-        else:
-            val = ((data[offset + 1] << 8) + data[offset])
-        if val >= 2 ** 15:
-            val = val - 2 ** 16
+    def _read_word(self, registry):
+        """Read a two bytes value stored as LSB and MSB."""
+        low = self.bus.read_byte_data(self.address, registry)
+        high = self.bus.read_byte_data(self.address, registry + 1)
+        val = (high << 8) + low
         return val
+
+    def _read_word_2c(self, registry):
+        """Calculate the 2's complement of a two bytes value."""
+        val = self._read_word(registry)
+        if val >= 0x8000:  # 32768
+            return val - 0x10000  # 65536
+        else:
+            return val
+
+    # def _read_data_from_i2c_block(self, offset=REG_XOUT_LSB, bl=6):
+    #     data = self.bus.read_i2c_block_data(self.address, offset, bl)
+    #     if offset == REG_TOUT_LSB:
+    #         val = ((data[1] << 8) + data[0])
+    #     else:
+    #         val = ((data[offset + 1] << 8) + data[offset])
+    #     if val >= 2 ** 15:
+    #         val = val - 2 ** 16
+    #     return val
 
     def get_data(self):
         """Read data from magnetic and temperature data registers."""
-        # i = 0
-        # [x, y, z, t] = [None, None, None, None]
-        # while i < 20:  # Timeout after about 0.20 seconds.
-        #     status = self._read_byte(REG_STATUS_1)
-        #     if status & STAT_OVL:
-        #         # Some values have reached an overflow.
-        #         msg = "Magnetic sensor overflow."
-        #         if self.output_range == RNG_2G:
-        #             msg += " Consider switching to RNG_8G output range."
-        #         logging.warning(msg)
-        #     if status & STAT_DOR:
-        #         # Previous measure was read partially, sensor in Data Lock.
-        #         x = self._read_word_2c(REG_XOUT_LSB)
-        #         y = self._read_word_2c(REG_YOUT_LSB)
-        #         z = self._read_word_2c(REG_ZOUT_LSB)
-        #         continue
-        #     if status & STAT_DRDY:
-        #         # Data is ready to read.
-        #         x = self._read_word_2c(REG_XOUT_LSB)
-        #         y = self._read_word_2c(REG_YOUT_LSB)
-        #         z = self._read_word_2c(REG_ZOUT_LSB)
-        #         t = self._read_word_2c(REG_TOUT_LSB)
-        #         break
-        #     else:
-        #         # Waiting for DRDY.
-        #         time.sleep(0.01)
-        #         i += 1
-        x = self._read_data_from_i2c_block(offset=REG_XOUT_LSB)
-        y = self._read_data_from_i2c_block(offset=REG_YOUT_LSB)
-        z = self._read_data_from_i2c_block(offset=REG_ZOUT_LSB)
-        t = self._read_data_from_i2c_block(offset=REG_TOUT_LSB, bl=2)
+        i = 0
+        [x, y, z, t] = [None, None, None, None]
+        while i < 20:  # Timeout after about 0.20 seconds.
+            status = self._read_byte(REG_STATUS_1)
+            if status & STAT_OVL:
+                # Some values have reached an overflow.
+                msg = "Magnetic sensor overflow."
+                if self.output_range == RNG_2G:
+                    msg += " Consider switching to RNG_8G output range."
+                logging.warning(msg)
+            if status & STAT_DOR:
+                # Previous measure was read partially, sensor in Data Lock.
+                x = self._read_word_2c(REG_XOUT_LSB)
+                y = self._read_word_2c(REG_YOUT_LSB)
+                z = self._read_word_2c(REG_ZOUT_LSB)
+                continue
+            if status & STAT_DRDY:
+                # Data is ready to read.
+                x = self._read_word_2c(REG_XOUT_LSB)
+                y = self._read_word_2c(REG_YOUT_LSB)
+                z = self._read_word_2c(REG_ZOUT_LSB)
+                t = self._read_word_2c(REG_TOUT_LSB)
+                break
+            else:
+                # Waiting for DRDY.
+                time.sleep(0.01)
+                i += 1
+        # x = self._read_data_from_i2c_block(offset=REG_XOUT_LSB)
+        # y = self._read_data_from_i2c_block(offset=REG_YOUT_LSB)
+        # z = self._read_data_from_i2c_block(offset=REG_ZOUT_LSB)
+        # t = self._read_data_from_i2c_block(offset=REG_TOUT_LSB, bl=2)
         return [x, y, z, t]
 
     def get_magnet_raw(self):
