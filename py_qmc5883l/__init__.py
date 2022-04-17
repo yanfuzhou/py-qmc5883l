@@ -22,7 +22,7 @@ __author__ = "Yanfu Zhou"
 __copyright__ = "Copyright 2022 Yanfu Zhou <yanfu.zhou@outlook.com>"
 __license__ = "GPLv3-or-later"
 __email__ = "yanfu.zhou@outlook.com"
-__version__ = "0.0.6"
+__version__ = "0.0.7"
 
 DFLT_BUS = 1
 DFLT_ADDRESS = 0x0d
@@ -82,8 +82,8 @@ class QMC5883L(object):
         self._calibration = [[1.0, 0.0, 0.0],
                              [0.0, 1.0, 0.0],
                              [0.0, 0.0, 1.0]]
-        chip_id = self._read_byte(REG_CHIP_ID)
-        if chip_id != 0xff:
+        chip_id = self.bus.read_byte_data(address, REG_CHIP_ID)
+        if self.bus.read_byte_data(address, REG_CHIP_ID) != 0xff:
             msg = "Chip ID returned 0x%x instead of 0xff; is the wrong chip?"
             logging.warning(msg, chip_id)
         self.mode_cont = (MODE_CONT | output_data_rate | output_range
@@ -113,8 +113,8 @@ class QMC5883L(object):
         self.bus.write_byte_data(self.address, registry, value)
         time.sleep(0.01)
 
-    def _read_byte(self, registry):
-        return self.bus.read_byte_data(self.address, registry)
+    # def _read_byte(self, registry):
+    #     return self.bus.read_byte_data(self.address, registry)
 
     # def _read_word(self, registry):
     #     """Read a two bytes value stored as LSB and MSB."""
