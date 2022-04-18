@@ -111,10 +111,9 @@ class QMC5883L(object):
     @staticmethod
     def _extract_from_bytes(data, offset):
         if offset == REG_TOUT_LSB:
-            val = ((data[1] << 8) + data[0])
+            val = (data[0] | (data[1] << 8))
         else:
-
-            val = ((data[offset + 1] << 8) + data[offset])
+            val = (data[offset] | (data[offset + 1] << 8))
         if val >= 2 ** 15:
             return val - 2 ** 16
         else:
