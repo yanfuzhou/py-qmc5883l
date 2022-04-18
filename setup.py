@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="py_qmc5883l",
-    version="0.2.5",
+    version="0.2.6",
     author="Yanfu Zhou",
     author_email="yanfu.zhou@outlook.com",
     description="Python driver for the QMC5883L 3-axis magnetic sensor",

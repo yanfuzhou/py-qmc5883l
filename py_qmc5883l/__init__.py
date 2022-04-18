@@ -20,7 +20,7 @@ __author__ = "Yanfu Zhou"
 __copyright__ = "Copyright 2022 Yanfu Zhou <yanfu.zhou@outlook.com>"
 __license__ = "GPLv3-or-later"
 __email__ = "yanfu.zhou@outlook.com"
-__version__ = "0.2.5"
+__version__ = "0.2.6"
 
 DFLT_BUS = 1
 DFLT_ADDRESS = 0x0d
@@ -69,8 +69,8 @@ class QMC5883L(object):
     def __init__(self,
                  i2c_bus=DFLT_BUS,
                  address=DFLT_ADDRESS,
-                 output_data_rate=ODR_10HZ,
-                 output_range=RNG_2G,
+                 output_data_rate=ODR_200HZ,
+                 output_range=RNG_8G,
                  oversampling_rate=OSR_512
                  ):
 
